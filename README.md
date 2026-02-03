@@ -2,14 +2,16 @@
 
 This tool estimates how turnout changes within specific demographic groups shift the overall vote share between two candidates. It treats turnout changes as whole numbers and lets you specify an elasticity for each demographic: the percentage-point change in support for Candidate A for each 1% turnout change in that demographic.
 
-## Web app
+## Website
 
-Run the Flask app and open the browser at `http://localhost:8000`.
+Open `index.html` directly in a browser, or serve it locally if your browser blocks local file
+requests.
 
 ```bash
-pip install -r requirements.txt
-python app.py
+python -m http.server 8000
 ```
+
+Then visit `http://localhost:8000/index.html`.
 
 ## CLI usage
 
@@ -56,4 +58,4 @@ The calculator then compares the scenario to the baseline to report the swing fo
 
 ## Output
 
-The CLI prints baseline totals, scenario totals, and the swing for Candidate A in votes and percentage points. The web app displays the same results in a dashboard.
+The CLI prints baseline totals, scenario totals, and the swing for Candidate A in votes and percentage points. The website displays the same results in a dashboard.
