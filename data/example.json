@@ -1,0 +1,26 @@
+{
+  "demographics": [
+    {
+      "name": "young_voters",
+      "baseline_voters": 12000,
+      "base_support_a": 55,
+      "elasticity": 0.2
+    },
+    {
+      "name": "suburban_families",
+      "baseline_voters": 18000,
+      "base_support_a": 48,
+      "elasticity": 0.1
+    },
+    {
+      "name": "retirees",
+      "baseline_voters": 9000,
+      "base_support_a": 42,
+      "elasticity": 0.15
+    }
+  ],
+  "turnout_delta": {
+    "young_voters": 600,
+    "retirees": -300
+  }
+}
