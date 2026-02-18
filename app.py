@@ -8,8 +8,14 @@ from typing import Any
 from flask import Flask, jsonify, render_template, request
 
 from election_swing_calculator import Scenario, compute_swing, parse_demographics
+from simulation import SimulationConfig, parse_states, run_simulation
 
 app = Flask(__name__)
+
+
+@app.errorhandler(ValueError)
+def handle_value_error(error: ValueError) -> tuple[Any, int]:
+    return jsonify({"error": str(error)}), 400
 
 
 @app.get("/")
@@ -36,6 +42,19 @@ def calculate() -> Any:
             "share_swing_a": swing.share_swing_a,
         }
     )
+
+
+@app.post("/simulate")
+def simulate() -> Any:
+    payload = request.get_json(force=True)
+    states = parse_states(payload.get("states", []))
+    config = SimulationConfig(
+        n_simulations=int(payload.get("n_simulations", 10000)),
+        seed=int(payload.get("seed", 2024)),
+        national_stddev=float(payload.get("national_stddev", 2.0)),
+        correlation=float(payload.get("correlation", 0.6)),
+    )
+    return jsonify(run_simulation(states, config))
 
 
 if __name__ == "__main__":
