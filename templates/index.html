@@ -133,7 +133,7 @@
       const createInput = (value, type = "number") => {
         const input = document.createElement("input");
         input.type = type;
-        input.value = value;
+        input.value = value ?? "";
         return input;
       };
 
