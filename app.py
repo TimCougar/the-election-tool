@@ -3,13 +3,37 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 
+from electoral_college import compute_electoral_outcome
 from election_swing_calculator import Scenario, compute_swing, parse_demographics
+from simulation import SimulationConfig, parse_states, run_simulation
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="/static")
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
+
+
+def _compute_asset_version() -> str:
+    static_dir = Path(app.static_folder)
+    asset_paths = [static_dir / "css" / "app.css", static_dir / "js" / "app.js"]
+    timestamps = [path.stat().st_mtime_ns for path in asset_paths if path.exists()]
+    return str(max(timestamps, default=0))
+
+
+ASSET_VERSION = _compute_asset_version()
+
+
+@app.context_processor
+def inject_asset_version() -> dict[str, str]:
+    return {"asset_version": ASSET_VERSION}
+
+
+@app.errorhandler(ValueError)
+def handle_value_error(error: ValueError) -> tuple[Any, int]:
+    return jsonify({"error": str(error)}), 400
 
 VALID_STATE_CODES = {
     "AL",
@@ -269,14 +293,23 @@ def calculate() -> Any:
     scenario = Scenario(turnout_delta=payload.get("turnout_delta", {}))
     swing = compute_swing(demographics, scenario)
 
+    electoral = compute_electoral_outcome(payload.get("electoral_scenario"))
+
     return jsonify(
         {
             "baseline": serialize_outcome(swing.baseline),
             "scenario": serialize_outcome(swing.scenario),
             "vote_swing_a": swing.vote_swing_a,
             "share_swing_a": swing.share_swing_a,
+            "electoral": electoral,
         }
     )
+
+
+@app.post("/calculate-electoral")
+def calculate_electoral() -> Any:
+    payload = request.get_json(force=True, silent=True) or {}
+    return jsonify(compute_electoral_outcome(payload.get("electoral_scenario")))
 
 
 if __name__ == "__main__":
