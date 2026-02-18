@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Elastic Electoral Swing Calculator</title>
+    <title>Layered Election Scenario Runner</title>
     <style>
       :root {
         color-scheme: light;
@@ -11,326 +11,420 @@
         background: #f5f7fb;
         color: #1f2937;
       }
-
       body {
         margin: 0;
-        padding: 32px;
+        padding: 24px;
       }
-
       .container {
-        max-width: 960px;
+        max-width: 1100px;
         margin: 0 auto;
-        background: #ffffff;
+        background: #fff;
         border-radius: 16px;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
-        padding: 32px;
+        padding: 24px;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
       }
-
       h1 {
         margin-top: 0;
-        font-size: 2rem;
       }
-
       p {
-        margin: 0 0 24px;
         color: #4b5563;
       }
-
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin: 20px 0;
+        flex-wrap: wrap;
+      }
+      .tab {
+        border: 1px solid #d1d5db;
+        border-radius: 999px;
+        padding: 8px 14px;
+        background: #f8fafc;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .tab.active {
+        background: #2563eb;
+        color: #fff;
+        border-color: #2563eb;
+      }
+      .panel {
+        display: none;
+      }
+      .panel.active {
+        display: block;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 24px;
+        margin: 12px 0;
       }
-
       th,
       td {
         border-bottom: 1px solid #e5e7eb;
-        padding: 12px;
+        padding: 10px;
         text-align: left;
       }
-
       th {
         background: #f8fafc;
-        font-weight: 600;
       }
-
-      input[type="text"],
-      input[type="number"] {
+      input,
+      textarea {
         width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
         border: 1px solid #d1d5db;
+        border-radius: 8px;
+        padding: 8px;
         box-sizing: border-box;
-        font-size: 0.95rem;
       }
-
+      textarea {
+        min-height: 140px;
+        font-family: "SFMono-Regular", ui-monospace, monospace;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
       .actions {
         display: flex;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
-        margin-bottom: 24px;
+        margin: 16px 0;
       }
-
       button {
         border: none;
-        background: #2563eb;
-        color: #ffffff;
-        padding: 10px 18px;
         border-radius: 999px;
+        padding: 10px 16px;
+        background: #2563eb;
+        color: #fff;
         font-weight: 600;
         cursor: pointer;
       }
-
       button.secondary {
         background: #e5e7eb;
         color: #1f2937;
       }
-
-      .results {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-
-      .card {
-        padding: 16px;
-        border-radius: 12px;
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-      }
-
-      .card h3 {
-        margin-top: 0;
-        font-size: 1rem;
-        color: #475569;
-      }
-
-      .metric {
-        font-size: 1.4rem;
-        font-weight: 600;
-      }
-
-      .note {
-        margin-top: 16px;
-        font-size: 0.9rem;
-        color: #6b7280;
-      }
-
       .error {
         color: #b91c1c;
-        margin-bottom: 16px;
+        margin: 6px 0 14px;
+      }
+      .card-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-top: 12px;
+      }
+      .card {
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 12px;
+      }
+      .metric {
+        font-size: 1.4rem;
+        font-weight: 700;
+      }
+      ul {
+        margin: 8px 0 0;
+      }
+      .hidden {
+        display: none;
       }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Elastic Electoral Swing Calculator</h1>
+      <h1>Layered Election Scenario Runner</h1>
       <p>
-        Model how turnout changes within specific demographics shift the vote share between two
-        candidates. All turnout values are whole numbers.
+        Build scenarios with layered assumptions: baseline state shares, national swing,
+        state overrides, and turnout/demographic effects.
       </p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="national">National</button>
+        <button class="tab" data-tab="state-overrides">State Overrides</button>
+        <button class="tab" data-tab="turnout">Turnout/Demographics</button>
+        <button class="tab" data-tab="assumptions">Assumptions summary</button>
+      </div>
+
       <div id="error" class="error" role="alert"></div>
-      <table>
-        <thead>
-          <tr>
-            <th>Demographic</th>
-            <th>Baseline voters</th>
-            <th>Candidate A support (%)</th>
-            <th>Elasticity</th>
-            <th>Turnout delta</th>
-          </tr>
-        </thead>
-        <tbody id="demo-rows"></tbody>
-      </table>
+
+      <section id="national" class="panel active">
+        <h2>National baseline and swing</h2>
+        <div class="grid">
+          <label>
+            National shift A (pts)
+            <input id="national-shift-a" type="number" step="0.1" value="0" />
+          </label>
+          <label>
+            National shift B (pts, optional)
+            <input id="national-shift-b" type="number" step="0.1" placeholder="defaults to -A" />
+          </label>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Voters</th>
+              <th>Baseline A %</th>
+              <th>Baseline B %</th>
+            </tr>
+          </thead>
+          <tbody id="state-rows"></tbody>
+        </table>
+        <button type="button" class="secondary" id="add-state">Add state row</button>
+      </section>
+
+      <section id="state-overrides" class="panel">
+        <h2>State override shifts</h2>
+        <p>Use one row per state; Shift B defaults to negative Shift A when blank.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Shift A (pts)</th>
+              <th>Shift B (pts)</th>
+            </tr>
+          </thead>
+          <tbody id="override-rows"></tbody>
+        </table>
+        <button type="button" class="secondary" id="add-override">Add override row</button>
+      </section>
+
+      <section id="turnout" class="panel">
+        <h2>Turnout and demographic effects</h2>
+        <p>
+          <strong>turnoutShocks</strong>: JSON array with <code>groupKey</code>, <code>state</code>
+          (or <code>ALL</code>), and <code>multiplier</code>.
+        </p>
+        <textarea id="turnout-shocks"></textarea>
+        <p>
+          <strong>demographicEffects</strong>: JSON object mapping
+          <code>groupKey -&gt; { stateCode: impactOnA }</code>.
+        </p>
+        <textarea id="demographic-effects"></textarea>
+      </section>
+
+      <section id="assumptions" class="panel">
+        <h2>Assumptions summary</h2>
+        <ul id="assumption-list"></ul>
+      </section>
 
       <div class="actions">
-        <button type="button" id="add-row">Add demographic</button>
-        <button type="button" id="calculate">Calculate swing</button>
-        <button type="button" class="secondary" id="reset">Reset</button>
+        <button type="button" id="calculate">Calculate scenario</button>
+        <button type="button" class="secondary" id="export-json">Export scenario JSON</button>
+        <button type="button" class="secondary" id="import-json">Import scenario JSON</button>
+        <input id="import-file" type="file" accept="application/json" class="hidden" />
+        <button type="button" class="secondary" id="reset">Reset defaults</button>
       </div>
 
-      <div class="results" id="results" hidden>
+      <div class="card-grid" id="results" hidden>
         <div class="card">
-          <h3>Baseline total voters</h3>
-          <div class="metric" id="baseline-total">-</div>
+          <div>National baseline A share</div>
+          <div id="baseline-a" class="metric">-</div>
         </div>
         <div class="card">
-          <h3>Scenario total voters</h3>
-          <div class="metric" id="scenario-total">-</div>
+          <div>National scenario A share</div>
+          <div id="scenario-a" class="metric">-</div>
         </div>
         <div class="card">
-          <h3>Candidate A swing (votes)</h3>
-          <div class="metric" id="swing-votes">-</div>
+          <div>National swing for A</div>
+          <div id="swing-a" class="metric">-</div>
         </div>
         <div class="card">
-          <h3>Candidate A swing (share)</h3>
-          <div class="metric" id="swing-share">-</div>
-        </div>
-        <div class="card">
-          <h3>Baseline A share</h3>
-          <div class="metric" id="baseline-share">-</div>
-        </div>
-        <div class="card">
-          <h3>Scenario A share</h3>
-          <div class="metric" id="scenario-share">-</div>
+          <div>Total voters (weighted)</div>
+          <div id="total-voters" class="metric">-</div>
         </div>
       </div>
-      <p class="note">
-        Elasticity represents how many percentage points Candidate A gains or loses for each 1%
-        turnout change within a demographic.
-      </p>
     </div>
 
     <script>
-      const demoRows = document.getElementById("demo-rows");
+      const stateRows = document.getElementById("state-rows");
+      const overrideRows = document.getElementById("override-rows");
+      const assumptionList = document.getElementById("assumption-list");
       const errorEl = document.getElementById("error");
       const resultsEl = document.getElementById("results");
 
-      const initialRows = [
-        {
-          name: "young_voters",
-          baseline_voters: 12000,
-          base_support_a: 55,
-          elasticity: 0.2,
-          turnout_delta: 600,
+      const defaultConfig = {
+        baselineStateShares: [
+          { state: "PA", voters: 5000000, shareA: 49, shareB: 48 },
+          { state: "MI", voters: 4500000, shareA: 50, shareB: 47 },
+          { state: "AZ", voters: 3200000, shareA: 48, shareB: 49 },
+        ],
+        scenario: {
+          nationalSwing: { shiftA: 0.8 },
+          stateAdjustments: { PA: { shiftA: 0.5 } },
+          turnoutShocks: [{ groupKey: "young", state: "ALL", multiplier: 1.1 }],
+          demographicEffects: { young: { PA: 0.4, MI: 0.3, AZ: 0.5 } },
         },
-        {
-          name: "suburban_families",
-          baseline_voters: 18000,
-          base_support_a: 48,
-          elasticity: 0.1,
-          turnout_delta: 0,
-        },
-        {
-          name: "retirees",
-          baseline_voters: 9000,
-          base_support_a: 42,
-          elasticity: 0.15,
-          turnout_delta: -300,
-        },
-      ];
+      };
 
-      const emptyRow = () => ({
-        name: "",
-        baseline_voters: 0,
-        base_support_a: 50,
-        elasticity: 0,
-        turnout_delta: 0,
-      });
-
-      const createCellInput = (value, type = "number") => {
+      const makeInput = (value, type = "text") => {
         const input = document.createElement("input");
         input.type = type;
-        input.value = value;
+        input.value = value ?? "";
         return input;
       };
 
-      const addRow = (row) => {
+      const addStateRow = ({ state = "", voters = 0, shareA = 0, shareB = 0 } = {}) => {
         const tr = document.createElement("tr");
-        const nameCell = document.createElement("td");
-        const baseCell = document.createElement("td");
-        const supportCell = document.createElement("td");
-        const elasticityCell = document.createElement("td");
-        const deltaCell = document.createElement("td");
-
-        const nameInput = createCellInput(row.name, "text");
-        const baseInput = createCellInput(row.baseline_voters);
-        baseInput.min = 0;
-        const supportInput = createCellInput(row.base_support_a);
-        supportInput.min = 0;
-        supportInput.max = 100;
-        const elasticityInput = createCellInput(row.elasticity);
-        const deltaInput = createCellInput(row.turnout_delta);
-
-        nameCell.appendChild(nameInput);
-        baseCell.appendChild(baseInput);
-        supportCell.appendChild(supportInput);
-        elasticityCell.appendChild(elasticityInput);
-        deltaCell.appendChild(deltaInput);
-
-        tr.appendChild(nameCell);
-        tr.appendChild(baseCell);
-        tr.appendChild(supportCell);
-        tr.appendChild(elasticityCell);
-        tr.appendChild(deltaCell);
-        demoRows.appendChild(tr);
+        [state, voters, shareA, shareB].forEach((value, idx) => {
+          const td = document.createElement("td");
+          const input = makeInput(value, idx === 0 ? "text" : "number");
+          if (idx !== 0) input.step = "0.1";
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        stateRows.appendChild(tr);
       };
 
-      const renderRows = (rows) => {
-        demoRows.innerHTML = "";
-        rows.forEach(addRow);
+      const addOverrideRow = ({ state = "", shiftA = 0, shiftB = "" } = {}) => {
+        const tr = document.createElement("tr");
+        const inputs = [makeInput(state, "text"), makeInput(shiftA, "number"), makeInput(shiftB, "number")];
+        inputs[1].step = "0.1";
+        inputs[2].step = "0.1";
+        inputs.forEach((input) => {
+          const td = document.createElement("td");
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        overrideRows.appendChild(tr);
+      };
+
+      const renderFromConfig = (config) => {
+        stateRows.innerHTML = "";
+        overrideRows.innerHTML = "";
+
+        document.getElementById("national-shift-a").value = config.scenario?.nationalSwing?.shiftA ?? 0;
+        document.getElementById("national-shift-b").value =
+          config.scenario?.nationalSwing?.shiftB ?? "";
+
+        (config.baselineStateShares || []).forEach(addStateRow);
+
+        const adjustments = config.scenario?.stateAdjustments || {};
+        Object.entries(adjustments).forEach(([state, value]) => {
+          if (typeof value === "number") {
+            addOverrideRow({ state, shiftA: value, shiftB: "" });
+          } else {
+            addOverrideRow({ state, shiftA: value.shiftA ?? 0, shiftB: value.shiftB ?? "" });
+          }
+        });
+
+        document.getElementById("turnout-shocks").value = JSON.stringify(
+          config.scenario?.turnoutShocks || [],
+          null,
+          2
+        );
+        document.getElementById("demographic-effects").value = JSON.stringify(
+          config.scenario?.demographicEffects || {},
+          null,
+          2
+        );
       };
 
       const gatherPayload = () => {
-        const rows = Array.from(demoRows.querySelectorAll("tr"));
-        const demographics = [];
-        const turnoutDelta = {};
+        const baselineStateShares = Array.from(stateRows.querySelectorAll("tr"))
+          .map((row) => {
+            const i = row.querySelectorAll("input");
+            return {
+              state: i[0].value.trim(),
+              voters: Number(i[1].value || 0),
+              shareA: Number(i[2].value || 0),
+              shareB: Number(i[3].value || 0),
+            };
+          })
+          .filter((r) => r.state);
 
-        rows.forEach((row) => {
-          const inputs = row.querySelectorAll("input");
-          const name = inputs[0].value.trim();
-          if (!name) {
-            return;
+        const stateAdjustments = {};
+        Array.from(overrideRows.querySelectorAll("tr")).forEach((row) => {
+          const i = row.querySelectorAll("input");
+          const state = i[0].value.trim().toUpperCase();
+          if (!state) return;
+          const shiftA = Number(i[1].value || 0);
+          if (i[2].value === "") {
+            stateAdjustments[state] = { shiftA };
+          } else {
+            stateAdjustments[state] = { shiftA, shiftB: Number(i[2].value || 0) };
           }
-          const baseline = Number.parseInt(inputs[1].value, 10) || 0;
-          const support = Number.parseFloat(inputs[2].value) || 0;
-          const elasticity = Number.parseFloat(inputs[3].value) || 0;
-          const delta = Number.parseInt(inputs[4].value, 10) || 0;
-
-          demographics.push({
-            name,
-            baseline_voters: baseline,
-            base_support_a: support,
-            elasticity,
-          });
-
-          turnoutDelta[name] = delta;
         });
 
-        return { demographics, turnout_delta: turnoutDelta };
-      };
-
-      const updateResults = (data) => {
-        document.getElementById("baseline-total").textContent = data.baseline.total_voters;
-        document.getElementById("scenario-total").textContent = data.scenario.total_voters;
-        document.getElementById("swing-votes").textContent = data.vote_swing_a;
-        document.getElementById("swing-share").textContent = `${data.share_swing_a.toFixed(2)} pts`;
-        document.getElementById("baseline-share").textContent = `${data.baseline.share_a.toFixed(2)}%`;
-        document.getElementById("scenario-share").textContent = `${data.scenario.share_a.toFixed(2)}%`;
-        resultsEl.hidden = false;
-      };
-
-      document.getElementById("add-row").addEventListener("click", () => {
-        addRow(emptyRow());
-      });
-
-      document.getElementById("reset").addEventListener("click", () => {
-        renderRows(initialRows);
-        resultsEl.hidden = true;
-        errorEl.textContent = "";
-      });
-
-      document.getElementById("calculate").addEventListener("click", async () => {
-        const payload = gatherPayload();
-        if (!payload.demographics.length) {
-          errorEl.textContent = "Please add at least one demographic row.";
-          resultsEl.hidden = true;
-          return;
+        let turnoutShocks;
+        let demographicEffects;
+        try {
+          turnoutShocks = JSON.parse(document.getElementById("turnout-shocks").value || "[]");
+        } catch {
+          throw new Error("turnoutShocks must be valid JSON array. Example: [{\"groupKey\":\"young\",\"state\":\"ALL\",\"multiplier\":1.2}]");
         }
 
         try {
+          demographicEffects = JSON.parse(document.getElementById("demographic-effects").value || "{}");
+        } catch {
+          throw new Error("demographicEffects must be valid JSON object. Example: {\"young\":{\"PA\":0.4}}");
+        }
+
+        return {
+          baselineStateShares,
+          scenario: {
+            nationalSwing: {
+              shiftA: Number(document.getElementById("national-shift-a").value || 0),
+              ...(document.getElementById("national-shift-b").value !== ""
+                ? { shiftB: Number(document.getElementById("national-shift-b").value || 0) }
+                : {}),
+            },
+            stateAdjustments,
+            turnoutShocks,
+            demographicEffects,
+          },
+        };
+      };
+
+      const updateResults = (data) => {
+        document.getElementById("baseline-a").textContent = `${data.national.baselineShareA.toFixed(2)}%`;
+        document.getElementById("scenario-a").textContent = `${data.national.scenarioShareA.toFixed(2)}%`;
+        document.getElementById("swing-a").textContent = `${data.national.swingA.toFixed(2)} pts`;
+        document.getElementById("total-voters").textContent = data.national.totalVoters.toLocaleString();
+
+        assumptionList.innerHTML = "";
+        data.assumptionsSummary.forEach((line) => {
+          const li = document.createElement("li");
+          li.textContent = line;
+          assumptionList.appendChild(li);
+        });
+
+        resultsEl.hidden = false;
+      };
+
+      document.querySelectorAll(".tab").forEach((tabBtn) => {
+        tabBtn.addEventListener("click", () => {
+          document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+          document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
+          tabBtn.classList.add("active");
+          document.getElementById(tabBtn.dataset.tab).classList.add("active");
+        });
+      });
+
+      document.getElementById("add-state").addEventListener("click", () => addStateRow());
+      document.getElementById("add-override").addEventListener("click", () => addOverrideRow());
+
+      document.getElementById("calculate").addEventListener("click", async () => {
+        try {
+          const payload = gatherPayload();
+          if (!payload.baselineStateShares.length) {
+            throw new Error("Add at least one baseline state row before calculating.");
+          }
+
           const response = await fetch("/calculate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
+          const data = await response.json();
           if (!response.ok) {
-            const message = await response.text();
-            throw new Error(message || "Request failed");
+            throw new Error(data.error || "Scenario calculation failed.");
           }
 
-          const data = await response.json();
           errorEl.textContent = "";
           updateResults(data);
         } catch (error) {
@@ -339,7 +433,46 @@
         }
       });
 
-      renderRows(initialRows);
+      document.getElementById("export-json").addEventListener("click", () => {
+        try {
+          const payload = gatherPayload();
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "scenario.json";
+          a.click();
+          URL.revokeObjectURL(url);
+          errorEl.textContent = "";
+        } catch (error) {
+          errorEl.textContent = error.message;
+        }
+      });
+
+      document.getElementById("import-json").addEventListener("click", () => {
+        document.getElementById("import-file").click();
+      });
+
+      document.getElementById("import-file").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const parsed = JSON.parse(text);
+          renderFromConfig(parsed);
+          errorEl.textContent = "Imported scenario JSON.";
+        } catch {
+          errorEl.textContent = "Import failed. Choose a valid scenario JSON file.";
+        }
+      });
+
+      document.getElementById("reset").addEventListener("click", () => {
+        renderFromConfig(defaultConfig);
+        errorEl.textContent = "";
+        resultsEl.hidden = true;
+      });
+
+      renderFromConfig(defaultConfig);
     </script>
   </body>
 </html>
