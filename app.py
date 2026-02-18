@@ -9,8 +9,14 @@ from flask import Flask, jsonify, render_template, request
 
 from electoral_college import compute_electoral_outcome
 from election_swing_calculator import Scenario, compute_swing, parse_demographics
+from simulation import SimulationConfig, parse_states, run_simulation
 
 app = Flask(__name__)
+
+
+@app.errorhandler(ValueError)
+def handle_value_error(error: ValueError) -> tuple[Any, int]:
+    return jsonify({"error": str(error)}), 400
 
 
 @app.get("/")

@@ -3,343 +3,312 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Elastic Electoral Swing Calculator</title>
+    <title>Electoral Monte Carlo Simulator</title>
     <style>
       :root {
         color-scheme: light;
         font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-        background: #f5f7fb;
-        color: #1f2937;
+        background: #f3f4f6;
+        color: #111827;
       }
-
-      body {
-        margin: 0;
-        padding: 32px;
-      }
-
+      body { margin: 0; padding: 24px; }
       .container {
-        max-width: 960px;
+        max-width: 1100px;
         margin: 0 auto;
-        background: #ffffff;
-        border-radius: 16px;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
-        padding: 32px;
+        background: #fff;
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1);
       }
-
-      h1 {
-        margin-top: 0;
-        font-size: 2rem;
-      }
-
-      p {
-        margin: 0 0 24px;
-        color: #4b5563;
-      }
-
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 24px;
-      }
-
-      th,
-      td {
-        border-bottom: 1px solid #e5e7eb;
-        padding: 12px;
-        text-align: left;
-      }
-
-      th {
-        background: #f8fafc;
-        font-weight: 600;
-      }
-
-      input[type="text"],
-      input[type="number"] {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid #d1d5db;
-        box-sizing: border-box;
-        font-size: 0.95rem;
-      }
-
-      .actions {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 24px;
-      }
-
-      button {
-        border: none;
-        background: #2563eb;
-        color: #ffffff;
-        padding: 10px 18px;
-        border-radius: 999px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      button.secondary {
-        background: #e5e7eb;
-        color: #1f2937;
-      }
-
-      .results {
-        display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-
-      .card {
-        padding: 16px;
-        border-radius: 12px;
-        background: #f8fafc;
-        border: 1px solid #e5e7eb;
-      }
-
-      .card h3 {
-        margin-top: 0;
-        font-size: 1rem;
-        color: #475569;
-      }
-
-      .metric {
-        font-size: 1.4rem;
-        font-weight: 600;
-      }
-
-      .note {
-        margin-top: 16px;
-        font-size: 0.9rem;
-        color: #6b7280;
-      }
-
-      .error {
-        color: #b91c1c;
-        margin-bottom: 16px;
-      }
+      h1 { margin-top: 0; }
+      p { color: #4b5563; }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: 10px; text-align: left; }
+      th { background: #f8fafc; }
+      input { width: 100%; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 16px; }
+      .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+      button { border: none; border-radius: 999px; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+      .primary { background: #2563eb; color: white; }
+      .secondary { background: #e5e7eb; color: #111827; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 18px; }
+      .card { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 14px; }
+      .metric { font-size: 1.35rem; font-weight: 700; }
+      .subtle { color: #6b7280; font-size: 0.9rem; }
+      .error { color: #b91c1c; min-height: 1.25em; }
+      #histogram { width: 100%; height: 260px; border: 1px solid #e5e7eb; border-radius: 10px; background: #fcfdff; }
+      .section-title { margin: 22px 0 10px; }
+      .sortable { cursor: pointer; }
+      .right { text-align: right; }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Elastic Electoral Swing Calculator</h1>
+      <h1>Electoral Monte Carlo Simulator</h1>
       <p>
-        Model how turnout changes within specific demographics shift the vote share between two
-        candidates. All turnout values are whole numbers.
+        Model state-level uncertainty with national + state-specific error terms. Run seeded
+        simulations for reproducible win probabilities, EV ranges, tipping points, and battlegrounds.
       </p>
-      <div id="error" class="error" role="alert"></div>
+
+      <div class="grid">
+        <label>Simulations <input id="n-sims" type="number" min="100" step="100" value="10000" /></label>
+        <label>Seed <input id="seed" type="number" value="2024" /></label>
+        <label>National std dev (pts) <input id="national-std" type="number" step="0.1" min="0" value="2.0" /></label>
+        <label>Correlation (0-1) <input id="correlation" type="number" step="0.05" min="0" max="1" value="0.6" /></label>
+      </div>
+
       <table>
         <thead>
           <tr>
-            <th>Demographic</th>
-            <th>Baseline voters</th>
-            <th>Candidate A support (%)</th>
-            <th>Elasticity</th>
-            <th>Turnout delta</th>
+            <th>State</th>
+            <th>Electoral votes</th>
+            <th>Expected Dem share (%)</th>
+            <th>State std dev (pts)</th>
           </tr>
         </thead>
-        <tbody id="demo-rows"></tbody>
+        <tbody id="state-rows"></tbody>
       </table>
 
       <div class="actions">
-        <button type="button" id="add-row">Add demographic</button>
-        <button type="button" id="calculate">Calculate swing</button>
-        <button type="button" class="secondary" id="reset">Reset</button>
+        <button class="secondary" id="add-row">Add state</button>
+        <button class="primary" id="run">Run simulation</button>
+        <button class="secondary" id="reset">Reset defaults</button>
       </div>
+      <div id="status" class="subtle"></div>
+      <div id="error" class="error"></div>
 
-      <div class="results" id="results" hidden>
-        <div class="card">
-          <h3>Baseline total voters</h3>
-          <div class="metric" id="baseline-total">-</div>
+      <div id="results" hidden>
+        <h2 class="section-title">Confidence interval cards</h2>
+        <div class="cards">
+          <div class="card"><h3>Dem win probability</h3><div id="dem-win" class="metric">-</div></div>
+          <div class="card"><h3>Rep win probability</h3><div id="rep-win" class="metric">-</div></div>
+          <div class="card"><h3>Dem EV 5/50/95</h3><div id="dem-band" class="metric">-</div></div>
+          <div class="card"><h3>Rep EV 5/50/95</h3><div id="rep-band" class="metric">-</div></div>
         </div>
-        <div class="card">
-          <h3>Scenario total voters</h3>
-          <div class="metric" id="scenario-total">-</div>
-        </div>
-        <div class="card">
-          <h3>Candidate A swing (votes)</h3>
-          <div class="metric" id="swing-votes">-</div>
-        </div>
-        <div class="card">
-          <h3>Candidate A swing (share)</h3>
-          <div class="metric" id="swing-share">-</div>
-        </div>
-        <div class="card">
-          <h3>Baseline A share</h3>
-          <div class="metric" id="baseline-share">-</div>
-        </div>
-        <div class="card">
-          <h3>Scenario A share</h3>
-          <div class="metric" id="scenario-share">-</div>
-        </div>
+
+        <h2 class="section-title">EV outcome histogram (Dem EV)</h2>
+        <svg id="histogram" viewBox="0 0 900 260" preserveAspectRatio="none"></svg>
+
+        <h2 class="section-title">Top battleground probabilities (sortable)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th class="sortable" data-key="state">State</th>
+              <th class="sortable right" data-key="ev">EV</th>
+              <th class="sortable right" data-key="demWinProbability">Dem win %</th>
+              <th class="sortable right" data-key="repWinProbability">Rep win %</th>
+              <th class="sortable right" data-key="tippingPointFrequency">Tipping-point %</th>
+            </tr>
+          </thead>
+          <tbody id="battleground-body"></tbody>
+        </table>
       </div>
-      <p class="note">
-        Elasticity represents how many percentage points Candidate A gains or loses for each 1%
-        turnout change within a demographic.
-      </p>
     </div>
 
     <script>
-      const demoRows = document.getElementById("demo-rows");
+      const stateRows = document.getElementById("state-rows");
       const errorEl = document.getElementById("error");
+      const statusEl = document.getElementById("status");
       const resultsEl = document.getElementById("results");
+      const runButton = document.getElementById("run");
 
-      const initialRows = [
-        {
-          name: "young_voters",
-          baseline_voters: 12000,
-          base_support_a: 55,
-          elasticity: 0.2,
-          turnout_delta: 600,
-        },
-        {
-          name: "suburban_families",
-          baseline_voters: 18000,
-          base_support_a: 48,
-          elasticity: 0.1,
-          turnout_delta: 0,
-        },
-        {
-          name: "retirees",
-          baseline_voters: 9000,
-          base_support_a: 42,
-          elasticity: 0.15,
-          turnout_delta: -300,
-        },
+      let latestRows = [];
+      let sortState = { key: "demWinProbability", asc: false };
+
+      const defaults = [
+        ["Pennsylvania", 19, 49.8, 3.5],
+        ["Michigan", 15, 50.4, 3.1],
+        ["Wisconsin", 10, 49.9, 3.2],
+        ["Arizona", 11, 49.3, 3.4],
+        ["Georgia", 16, 49.4, 3.5],
+        ["North Carolina", 16, 48.8, 3.2],
+        ["Nevada", 6, 50.5, 3.0],
+        ["Florida", 30, 48.6, 3.1],
+        ["Texas", 40, 46.9, 2.8],
+        ["California", 54, 60.0, 2.2],
+        ["New York", 28, 59.2, 2.3],
+        ["Illinois", 19, 56.5, 2.4],
       ];
 
-      const emptyRow = () => ({
-        name: "",
-        baseline_voters: 0,
-        base_support_a: 50,
-        elasticity: 0,
-        turnout_delta: 0,
-      });
-
-      const createCellInput = (value, type = "number") => {
+      const createInput = (value, type = "number") => {
         const input = document.createElement("input");
         input.type = type;
         input.value = value;
         return input;
       };
 
-      const addRow = (row) => {
+      function addStateRow([name, ev, demShare, stddev]) {
         const tr = document.createElement("tr");
-        const nameCell = document.createElement("td");
-        const baseCell = document.createElement("td");
-        const supportCell = document.createElement("td");
-        const elasticityCell = document.createElement("td");
-        const deltaCell = document.createElement("td");
+        const cells = [document.createElement("td"), document.createElement("td"), document.createElement("td"), document.createElement("td")];
 
-        const nameInput = createCellInput(row.name, "text");
-        const baseInput = createCellInput(row.baseline_voters);
-        baseInput.min = 0;
-        const supportInput = createCellInput(row.base_support_a);
-        supportInput.min = 0;
-        supportInput.max = 100;
-        const elasticityInput = createCellInput(row.elasticity);
-        const deltaInput = createCellInput(row.turnout_delta);
+        const nameInput = createInput(name, "text");
+        const evInput = createInput(ev);
+        evInput.min = 1;
+        const demInput = createInput(demShare);
+        demInput.min = 0;
+        demInput.max = 100;
+        const stdInput = createInput(stddev);
+        stdInput.min = 0;
+        stdInput.step = 0.1;
 
-        nameCell.appendChild(nameInput);
-        baseCell.appendChild(baseInput);
-        supportCell.appendChild(supportInput);
-        elasticityCell.appendChild(elasticityInput);
-        deltaCell.appendChild(deltaInput);
+        cells[0].appendChild(nameInput);
+        cells[1].appendChild(evInput);
+        cells[2].appendChild(demInput);
+        cells[3].appendChild(stdInput);
+        cells.forEach((cell) => tr.appendChild(cell));
+        stateRows.appendChild(tr);
+      }
 
-        tr.appendChild(nameCell);
-        tr.appendChild(baseCell);
-        tr.appendChild(supportCell);
-        tr.appendChild(elasticityCell);
-        tr.appendChild(deltaCell);
-        demoRows.appendChild(tr);
-      };
+      function renderRows(rows) {
+        stateRows.innerHTML = "";
+        rows.forEach(addStateRow);
+      }
 
-      const renderRows = (rows) => {
-        demoRows.innerHTML = "";
-        rows.forEach(addRow);
-      };
-
-      const gatherPayload = () => {
-        const rows = Array.from(demoRows.querySelectorAll("tr"));
-        const demographics = [];
-        const turnoutDelta = {};
-
-        rows.forEach((row) => {
-          const inputs = row.querySelectorAll("input");
-          const name = inputs[0].value.trim();
-          if (!name) {
-            return;
-          }
-          const baseline = Number.parseInt(inputs[1].value, 10) || 0;
-          const support = Number.parseFloat(inputs[2].value) || 0;
-          const elasticity = Number.parseFloat(inputs[3].value) || 0;
-          const delta = Number.parseInt(inputs[4].value, 10) || 0;
-
-          demographics.push({
+      function gatherPayload() {
+        const states = [];
+        for (const row of Array.from(stateRows.querySelectorAll("tr"))) {
+          const [name, ev, dem, std] = Array.from(row.querySelectorAll("input")).map((input) => input.value.trim());
+          if (!name) continue;
+          states.push({
             name,
-            baseline_voters: baseline,
-            base_support_a: support,
-            elasticity,
+            electoral_votes: Number.parseInt(ev, 10) || 0,
+            dem_share: Number.parseFloat(dem) || 0,
+            stddev: Number.parseFloat(std) || 0,
           });
+        }
 
-          turnoutDelta[name] = delta;
+        return {
+          states,
+          n_simulations: Number.parseInt(document.getElementById("n-sims").value, 10) || 10000,
+          seed: Number.parseInt(document.getElementById("seed").value, 10) || 2024,
+          national_stddev: Number.parseFloat(document.getElementById("national-std").value) || 0,
+          correlation: Number.parseFloat(document.getElementById("correlation").value) || 0,
+        };
+      }
+
+      function pct(value) {
+        return `${(value * 100).toFixed(1)}%`;
+      }
+
+      function drawHistogram(bins) {
+        const svg = document.getElementById("histogram");
+        svg.innerHTML = "";
+        if (!bins.length) return;
+
+        const width = 900;
+        const height = 260;
+        const maxCount = Math.max(...bins.map((bin) => bin.count), 1);
+        const barWidth = width / bins.length;
+
+        bins.forEach((bin, i) => {
+          const barHeight = (bin.count / maxCount) * (height - 30);
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", String(i * barWidth + 1));
+          rect.setAttribute("y", String(height - barHeight - 18));
+          rect.setAttribute("width", String(Math.max(1, barWidth - 2)));
+          rect.setAttribute("height", String(barHeight));
+          rect.setAttribute("fill", "#2563eb");
+          rect.setAttribute("opacity", "0.85");
+          svg.appendChild(rect);
         });
 
-        return { demographics, turnout_delta: turnoutDelta };
-      };
+        const axis = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        axis.setAttribute("x1", "0");
+        axis.setAttribute("y1", String(height - 18));
+        axis.setAttribute("x2", String(width));
+        axis.setAttribute("y2", String(height - 18));
+        axis.setAttribute("stroke", "#9ca3af");
+        svg.appendChild(axis);
+      }
 
-      const updateResults = (data) => {
-        document.getElementById("baseline-total").textContent = data.baseline.total_voters;
-        document.getElementById("scenario-total").textContent = data.scenario.total_voters;
-        document.getElementById("swing-votes").textContent = data.vote_swing_a;
-        document.getElementById("swing-share").textContent = `${data.share_swing_a.toFixed(2)} pts`;
-        document.getElementById("baseline-share").textContent = `${data.baseline.share_a.toFixed(2)}%`;
-        document.getElementById("scenario-share").textContent = `${data.scenario.share_a.toFixed(2)}%`;
+      function sortRows(rows) {
+        return [...rows].sort((a, b) => {
+          const { key, asc } = sortState;
+          const av = a[key];
+          const bv = b[key];
+          const cmp = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+          return asc ? cmp : -cmp;
+        });
+      }
+
+      function renderBattlegroundTable(rows) {
+        const body = document.getElementById("battleground-body");
+        body.innerHTML = "";
+
+        sortRows(rows).forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${row.state}</td>
+            <td class="right">${row.ev}</td>
+            <td class="right">${pct(row.demWinProbability)}</td>
+            <td class="right">${pct(row.repWinProbability)}</td>
+            <td class="right">${pct(row.tippingPointFrequency)}</td>
+          `;
+          body.appendChild(tr);
+        });
+      }
+
+      function updateResults(data) {
+        document.getElementById("dem-win").textContent = pct(data.winProbabilityDem);
+        document.getElementById("rep-win").textContent = pct(data.winProbabilityRep);
+        document.getElementById("dem-band").textContent = `${data.evPercentiles.dem.p5} / ${data.evPercentiles.dem.p50} / ${data.evPercentiles.dem.p95}`;
+        document.getElementById("rep-band").textContent = `${data.evPercentiles.rep.p5} / ${data.evPercentiles.rep.p50} / ${data.evPercentiles.rep.p95}`;
+        drawHistogram(data.evHistogram);
+        latestRows = data.topBattlegrounds;
+        renderBattlegroundTable(latestRows);
         resultsEl.hidden = false;
-      };
+      }
+
+      document.querySelectorAll("th.sortable").forEach((header) => {
+        header.addEventListener("click", () => {
+          const key = header.dataset.key;
+          sortState = sortState.key === key ? { key, asc: !sortState.asc } : { key, asc: true };
+          renderBattlegroundTable(latestRows);
+        });
+      });
 
       document.getElementById("add-row").addEventListener("click", () => {
-        addRow(emptyRow());
+        addStateRow(["", 1, 50, 3]);
       });
 
       document.getElementById("reset").addEventListener("click", () => {
-        renderRows(initialRows);
+        renderRows(defaults);
         resultsEl.hidden = true;
         errorEl.textContent = "";
       });
 
-      document.getElementById("calculate").addEventListener("click", async () => {
+      document.getElementById("run").addEventListener("click", async () => {
         const payload = gatherPayload();
-        if (!payload.demographics.length) {
-          errorEl.textContent = "Please add at least one demographic row.";
-          resultsEl.hidden = true;
+        if (!payload.states.length) {
+          errorEl.textContent = "Add at least one state.";
           return;
         }
 
+        runButton.disabled = true;
+        statusEl.textContent = "Running simulations on backend…";
+        errorEl.textContent = "";
+
         try {
-          const response = await fetch("/calculate", {
+          const response = await fetch("/simulate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
-
+          const body = await response.json();
           if (!response.ok) {
-            const message = await response.text();
-            throw new Error(message || "Request failed");
+            throw new Error(body.error || "Simulation failed");
           }
-
-          const data = await response.json();
-          errorEl.textContent = "";
-          updateResults(data);
+          updateResults(body);
+          statusEl.textContent = `Completed ${body.nSimulations.toLocaleString()} simulations with seed ${body.seed}.`;
         } catch (error) {
           errorEl.textContent = error.message;
-          resultsEl.hidden = true;
+          statusEl.textContent = "";
+        } finally {
+          runButton.disabled = false;
         }
       });
 
-      renderRows(initialRows);
+      renderRows(defaults);
     </script>
   </body>
 </html>
