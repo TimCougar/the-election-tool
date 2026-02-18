@@ -1,60 +1,60 @@
-# Elastic Electoral Swing Calculator
+# Electoral Monte Carlo Simulator
 
-This tool estimates how turnout changes within specific demographic groups shift the overall vote share between two candidates. It treats turnout changes as whole numbers and lets you specify an elasticity for each demographic: the percentage-point change in support for Candidate A for each 1% turnout change in that demographic.
+This project now includes a probabilistic Electoral College simulator. It models each state with:
 
-## Web app (canonical entrypoint)
+- An expected Democratic vote share.
+- A configurable state-specific standard deviation.
+- A shared national error term plus state-specific error terms.
+- A correlation control that tunes how much uncertainty is shared nationally.
 
-Run the Flask app:
+The app runs seeded Monte Carlo simulations (default 10,000) for reproducible forecasts.
+
+## Run the web app
 
 ```bash
 python app.py
 ```
 
-Then visit `http://localhost:8000/`.
+Then visit `http://localhost:8000`.
 
-## CLI usage
+## Simulation outputs
 
-```bash
-python election_swing_calculator.py data/example.json
-```
+The `/simulate` API returns:
 
-## How it works
+- `winProbabilityDem` and `winProbabilityRep`
+- EV percentile bands (5th/50th/95th) for both parties
+- Distribution-ready EV histogram bins
+- State win probabilities
+- Tipping-point state frequencies
+- Top battleground states sorted by closeness to 50/50
 
-For each demographic group:
+## UI features
 
-- Start with the baseline voters and Candidate A support share.
-- Apply the turnout delta (whole-number change in voters).
-- Compute the turnout change percentage.
-- Adjust Candidate A support using the elasticity value.
-- Clamp support to the 0–100% range and compute votes.
+- Histogram chart for Democratic EV outcomes
+- Confidence interval cards
+- Sortable battleground probability table
+- Performance guardrail: simulation compute happens on the backend so the browser UI remains responsive
 
-The calculator then compares the scenario to the baseline to report the swing for Candidate A.
+## Legacy endpoint
 
-## Configuration format
+The CLI prints baseline totals, scenario totals, and the swing for Candidate A in votes and percentage points. The website displays the same results in a dashboard.
 
-```json
-{
-  "demographics": [
-    {
-      "name": "young_voters",
-      "baseline_voters": 12000,
-      "base_support_a": 55,
-      "elasticity": 0.2
-    }
-  ],
-  "turnout_delta": {
-    "young_voters": 600
-  }
-}
-```
+## Electoral College API
 
-### Field definitions
+The Flask app now includes Electoral College modeling with deterministic state-by-state resolution and proper Maine/Nebraska district allocation.
 
-- `baseline_voters`: whole-number voter count for the baseline scenario.
-- `base_support_a`: baseline support for Candidate A (0–100).
-- `elasticity`: change in Candidate A support (percentage points) per 1% turnout change.
-- `turnout_delta`: whole-number turnout change per demographic (positive or negative).
+### `POST /calculate`
 
-## Output
+In addition to demographic swing output, you can pass an optional `electoral_scenario` object and receive an `electoral` section containing state results and national totals:
 
-The CLI prints baseline totals, scenario totals, and the swing for Candidate A in votes and percentage points. The web app at `http://localhost:8000/` displays the same results in a dashboard.
+- `evDem`, `evRep`
+- `popularDem`, `popularRep`
+- `winningPath` summary
+
+### `POST /calculate-electoral`
+
+Compute only Electoral College results. Request body supports:
+
+- `electoral_scenario.national_dem_shift` / `national_rep_shift`
+- `electoral_scenario.turnout_multiplier`
+- `electoral_scenario.state_shifts[STATE_CODE]` overrides including district overrides for ME/NE
