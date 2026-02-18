@@ -7,6 +7,7 @@ from typing import Any
 
 from flask import Flask, jsonify, render_template, request
 
+from electoral_college import compute_electoral_outcome
 from election_swing_calculator import Scenario, compute_swing, parse_demographics
 from simulation import SimulationConfig, parse_states, run_simulation
 
@@ -34,27 +35,23 @@ def calculate() -> Any:
     scenario = Scenario(turnout_delta=payload.get("turnout_delta", {}))
     swing = compute_swing(demographics, scenario)
 
+    electoral = compute_electoral_outcome(payload.get("electoral_scenario"))
+
     return jsonify(
         {
             "baseline": serialize_outcome(swing.baseline),
             "scenario": serialize_outcome(swing.scenario),
             "vote_swing_a": swing.vote_swing_a,
             "share_swing_a": swing.share_swing_a,
+            "electoral": electoral,
         }
     )
 
 
-@app.post("/simulate")
-def simulate() -> Any:
-    payload = request.get_json(force=True)
-    states = parse_states(payload.get("states", []))
-    config = SimulationConfig(
-        n_simulations=int(payload.get("n_simulations", 10000)),
-        seed=int(payload.get("seed", 2024)),
-        national_stddev=float(payload.get("national_stddev", 2.0)),
-        correlation=float(payload.get("correlation", 0.6)),
-    )
-    return jsonify(run_simulation(states, config))
+@app.post("/calculate-electoral")
+def calculate_electoral() -> Any:
+    payload = request.get_json(force=True, silent=True) or {}
+    return jsonify(compute_electoral_outcome(payload.get("electoral_scenario")))
 
 
 if __name__ == "__main__":
