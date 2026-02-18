@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from flask import Flask, jsonify, render_template, request
@@ -11,7 +12,23 @@ from electoral_college import compute_electoral_outcome
 from election_swing_calculator import Scenario, compute_swing, parse_demographics
 from simulation import SimulationConfig, parse_states, run_simulation
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="/static")
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
+
+
+def _compute_asset_version() -> str:
+    static_dir = Path(app.static_folder)
+    asset_paths = [static_dir / "css" / "app.css", static_dir / "js" / "app.js"]
+    timestamps = [path.stat().st_mtime_ns for path in asset_paths if path.exists()]
+    return str(max(timestamps, default=0))
+
+
+ASSET_VERSION = _compute_asset_version()
+
+
+@app.context_processor
+def inject_asset_version() -> dict[str, str]:
+    return {"asset_version": ASSET_VERSION}
 
 
 @app.errorhandler(ValueError)
