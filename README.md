@@ -59,3 +59,23 @@ The calculator then compares the scenario to the baseline to report the swing fo
 ## Output
 
 The CLI prints baseline totals, scenario totals, and the swing for Candidate A in votes and percentage points. The website displays the same results in a dashboard.
+
+## Electoral College API
+
+The Flask app now includes Electoral College modeling with deterministic state-by-state resolution and proper Maine/Nebraska district allocation.
+
+### `POST /calculate`
+
+In addition to demographic swing output, you can pass an optional `electoral_scenario` object and receive an `electoral` section containing state results and national totals:
+
+- `evDem`, `evRep`
+- `popularDem`, `popularRep`
+- `winningPath` summary
+
+### `POST /calculate-electoral`
+
+Compute only Electoral College results. Request body supports:
+
+- `electoral_scenario.national_dem_shift` / `national_rep_shift`
+- `electoral_scenario.turnout_multiplier`
+- `electoral_scenario.state_shifts[STATE_CODE]` overrides including district overrides for ME/NE
